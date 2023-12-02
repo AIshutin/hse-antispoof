@@ -40,9 +40,9 @@ class BaseDataset(Dataset):
             if audio_wave.shape[1] > self.segment_length:
                 if len(self) < 100:
                     random_start = 0
-                
-                #random_start = torch.randint(size=(1, ), low=0, 
-                #                             high=audio_wave.shape[1] - self.segment_length).item()
+                else:
+                    random_start = torch.randint(size=(1, ), low=0, 
+                                                 high=audio_wave.shape[1] - self.segment_length).item()
             audio_wave = audio_wave[:, random_start:random_start + self.segment_length]
         spec = audio2mel(audio_wave)
 
