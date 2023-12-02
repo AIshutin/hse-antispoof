@@ -7,7 +7,7 @@ logger:
 data:
   train:
     _target_: torch.utils.data.DataLoader
-    batch_size: 128
+    batch_size: 64
     num_workers: 10
     shuffle: True
     drop_last: True
