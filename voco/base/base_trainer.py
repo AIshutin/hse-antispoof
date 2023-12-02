@@ -178,7 +178,8 @@ class BaseTrainer:
         self.mnt_best = checkpoint["monitor_best"]
 
         # load architecture params from checkpoint.
-        if checkpoint["config"]["arch"] != self.config["arch"]:
+        if checkpoint["config"]["generator"] != self.config["generator"] \
+          or checkpoint["config"]["discriminator"] != self.config["discriminator"]:
             self.logger.warning(
                 "Warning: Architecture configuration given in config file is different from that "
                 "of checkpoint. This may yield an exception while state_dict is being loaded."
@@ -188,8 +189,7 @@ class BaseTrainer:
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
-                checkpoint["config"]["g_optimizer"] != self.config["g_optimizer"] or
-                checkpoint["config"]["g_lr_scheduler"] != self.config["g_lr_scheduler"]
+                checkpoint["config"]["g_optimizer"] != self.config["g_optimizer"]
         ):
             self.logger.warning(
                 "Warning: Optimizer or lr_scheduler given in config file is different "
@@ -197,13 +197,12 @@ class BaseTrainer:
             )
         else:
             self.g_optimizer.load_state_dict(checkpoint["g_optimizer"])
-            if 'g_lr_scheduler' in checkpoint:
+            if checkpoint["config"]["g_lr_scheduler"] == self.config["g_lr_scheduler"]:
                     self.g_lr_scheduler.load_state_dict(checkpoint['g_lr_scheduler'])
 
                 # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
-                checkpoint["config"]["d_optimizer"] != self.config["d_optimizer"] or
-                checkpoint["config"]["d_lr_scheduler"] != self.config["d_lr_scheduler"]
+                checkpoint["config"]["d_optimizer"] != self.config["d_optimizer"]
         ):
             self.logger.warning(
                 "Warning: Optimizer or lr_scheduler given in config file is different "
@@ -211,7 +210,7 @@ class BaseTrainer:
             )
         else:
             self.d_optimizer.load_state_dict(checkpoint["d_optimizer"])
-            if 'd_lr_scheduler' in checkpoint:
+            if checkpoint["config"]["d_lr_scheduler"] != self.config["d_lr_scheduler"]:
                 self.d_lr_scheduler.load_state_dict(checkpoint['d_lr_scheduler'])
 
         self.logger.info(

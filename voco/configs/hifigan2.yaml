@@ -91,10 +91,10 @@ d_loss:
   _target_: voco.loss.GANLoss_DG
 d_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.999
+  gamma: 0.99
 g_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.999
+  gamma: 0.99
 g_optimizer:
   _target_: torch.optim.AdamW
   weight_decay: 0.01
@@ -111,8 +111,8 @@ d_optimizer:
   - 0.99
 trainer:
   _target_: voco.trainer.Trainer
-  epochs: 38
-  save_period: 38
+  epochs: 100000
+  save_period: 5
   verbosity: 2
   save_dir: saved/${name}/
   visualize: wandb
