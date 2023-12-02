@@ -1,4 +1,4 @@
-# TTS Project
+# voco Project
 
 Based on this [template](https://github.com/WrathOfGrapes/asr_project_template) and [this FastSpeech 1 implementation](https://github.com/xcmyz/FastSpeech).
 
@@ -6,24 +6,7 @@ Based on this [template](https://github.com/WrathOfGrapes/asr_project_template) 
 
 ```
 pip install -r ./requirements.txt
-wget https://github.com/xcmyz/FastSpeech/raw/master/alignments.zip
-unzip alignments.zip >> /dev/null
-mkdir data ; mkdir data/datasets ; mkdir data/datasets/ljspeech
-mv alignments data/datasets/ljspeech/alignments
-
-gdown https://drive.google.com/u/0/uc?id=1cJKJTmYd905a-9GFoo5gKjzhKjUVj83j
-tar -xvf mel.tar.gz
-echo $(ls mels | wc -l)
-
-mv mels data/datasets/ljspeech
-
-python3 preprocess.py
-
-gdown https://drive.google.com/u/0/uc?id=1WsibBTsuRg_SF2Z6L6NFRTT-NjEy1oTx
-mkdir -p waveglow/pretrained_model/
-mv waveglow_256channels_ljs_v2.pt waveglow/pretrained_model/waveglow_256channels.pt
-
-gdown https://drive.google.com/file/d/14CCYsCJlaQ5KUdY8vw6_xxbvx1ZuSQzw/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
+gdown  -O default_test_model/checkpoint.pth --fuzzy
 
 ```
 
@@ -39,4 +22,4 @@ To synthesize audio:
 python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/checkpoint.pth
 ```
 
-Feel free to change `tts/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.
+Feel free to change `voco/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.

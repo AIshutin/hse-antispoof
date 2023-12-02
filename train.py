@@ -20,34 +20,42 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 
-@hydra.main(version_base=None, config_path="tts/configs/", config_name="fastspeech2")
+@hydra.main(version_base=None, config_path="voco/configs/", config_name="hifigan_test")
 def main(config: DictConfig):
     config2 = yaml.safe_load(OmegaConf.to_yaml(config))
     run_id = datetime.now().strftime(r"%m%d_%H%M%S")
 
-    text_encoder = instantiate(config.text_encoder)
     logger = instantiate(config.logger, main_config=json.dumps(config2), run_id=run_id)
     device = instantiate(config.device)
-    model = instantiate(config.arch, n_class=len(text_encoder)).to(device)
-    logger.info(model)
-    loss = instantiate(config.loss).to(device)
+    generator = instantiate(config.generator).to(device)
+    discriminator = instantiate(config.discriminator).to(device)
+    logger.info(generator)
+    logger.info(discriminator)
+    g_criterion = instantiate(config.g_loss).to(device)
+    d_criterion = instantiate(config.d_loss).to(device)
     metrics = [
-        instantiate(el, text_encoder=text_encoder) for el in config.metrics
+        instantiate(el) for el in config.metrics
     ]
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = instantiate(config.optimizer, params=trainable_params)
-    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    g_trainable_params = filter(lambda p: p.requires_grad, generator.parameters())
+    d_trainable_params = filter(lambda p: p.requires_grad, discriminator.parameters())
+    g_optimizer = instantiate(config.g_optimizer, params=g_trainable_params)
+    d_optimizer = instantiate(config.d_optimizer, params=d_trainable_params)
+    g_lr_scheduler = instantiate(config.g_lr_scheduler, optimizer=g_optimizer)
+    d_lr_scheduler = instantiate(config.d_lr_scheduler, optimizer=d_optimizer)
     dataloaders = instantiate(config.data)
 
     trainer = instantiate(
         config.trainer,
-        model=model,
-        criterion=loss,
+        generator=generator,
+        discriminator=discriminator,
+        g_criterion=g_criterion,
+        d_criterion=d_criterion,
+        g_lr_scheduler=g_lr_scheduler,
+        d_lr_scheduler=d_lr_scheduler,
+        g_optimizer=g_optimizer,
+        d_optimizer=d_optimizer,
         metrics=metrics,
         device=device,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
-        text_encoder=text_encoder,
         dataloaders=dataloaders,
         logger=logger,
         main_config=json.dumps(config2),

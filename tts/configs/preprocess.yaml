@@ -1,9 +1,0 @@
-defaults:
-  - data: default_data
-preprocessing:
-  sr: 22050
-text_encoder:
-  _target_: tts.text_encoder.FastSpeechEncoder
-  cleaners:
-    - english_cleaners
-  pad_token: <pad>

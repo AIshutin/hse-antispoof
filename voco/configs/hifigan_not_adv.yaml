@@ -1,0 +1,109 @@
+name: hifigan-mk1-griffin
+logger:
+  _target_: voco.logger.logger.get_logger
+  experiment_name: ${name}
+  name: train
+  save_dir: ${trainer.save_dir}
+data:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 128
+    num_workers: 10
+    shuffle: True
+    drop_last: True
+    collate_fn: 
+      _target_: voco.collate_fn.get_collate_fn
+    dataset:
+      _target_: voco.datasets.LJspeechDataset
+      part: train
+      segment_length: 8192
+  val:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 128
+    num_workers: 10
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: voco.collate_fn.get_collate_fn
+    dataset:
+      _target_: voco.datasets.LJspeechDataset
+      part: test
+      segment_length: 8192
+metrics: []
+device: 
+  _target_: torch.device
+  device: "cuda:0"
+generator:
+  _target_: voco.model.Generator
+  in_channels: 80
+  hu: 128
+  ku: 
+    - 16
+    - 16
+    - 4
+    - 4
+  kr: 
+    - 3
+    - 7
+    - 11
+  Dr: 
+    - - - 1
+        - 1
+      - - 3
+        - 1
+      - - 5
+        - 1
+    - - - 1
+        - 1
+      - - 3
+        - 1
+      - - 5
+        - 1
+    - - - 1
+        - 1
+      - - 3
+        - 1
+      - - 5
+        - 1
+discriminator:
+  _target_: voco.model.Discriminator
+  periods: [2]
+  scales: [1, 2, 4]
+g_loss:
+  _target_: voco.loss.HiFiGANLoss_G
+  fm: 0
+  gan: 0
+  mel: 45.0
+d_loss:
+  _target_: voco.loss.GANLoss_DG
+d_lr_scheduler:
+  _target_: voco.scheduler.getExponentialScheduler
+  gamma: 0.999
+g_lr_scheduler:
+  _target_: voco.scheduler.getExponentialScheduler
+  gamma: 0.999
+g_optimizer:
+  _target_: torch.optim.AdamW
+  weight_decay: 0.01
+  lr: 0.0002
+  betas:
+  - 0.8
+  - 0.99
+d_optimizer:
+  _target_: torch.optim.AdamW
+  weight_decay: 0.01
+  lr: 0.0002
+  betas:
+  - 0.8
+  - 0.99
+trainer:
+  _target_: voco.trainer.Trainer
+  epochs: 10
+  save_period: 200000
+  verbosity: 2
+  save_dir: saved/${name}/
+  visualize: wandb
+  wandb_project: voco_project
+  len_epoch: 100
+  grad_norm_clip: 100
+  scheduler_steps: 50

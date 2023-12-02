@@ -1,0 +1,2 @@
+from voco.datasets.custom_dataset import CustomDirAudioDataset
+from voco.datasets.ljspeech_dataset import LJspeechDataset
