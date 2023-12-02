@@ -33,6 +33,17 @@ data:
       segment_length: 8192
       max_audio_length: 5
       limit: 1
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    num_workers: 0
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: voco.collate_fn.get_collate_fn
+    dataset:
+      _target_: voco.datasets.CustomDirAudioDataset
+      audio_dir: test_data
 metrics: []
 device: 
   _target_: torch.device
@@ -75,8 +86,8 @@ discriminator:
   scales: [1, 2, 4]
 g_loss:
   _target_: voco.loss.HiFiGANLoss_G
-  fm: 0
-  gan: 0
+  fm: 2.0
+  gan: 1.0
   mel: 45.0
 d_loss:
   _target_: voco.loss.GANLoss_DG

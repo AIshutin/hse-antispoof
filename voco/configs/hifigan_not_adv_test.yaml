@@ -1,4 +1,4 @@
-name: hifigan-mk1-griffin-test
+name: hifigan-test
 logger:
   _target_: voco.logger.logger.get_logger
   experiment_name: ${name}
@@ -7,20 +7,21 @@ logger:
 data:
   train:
     _target_: torch.utils.data.DataLoader
-    batch_size: 20
+    batch_size: 1
     num_workers: 10
-    shuffle: False
-    drop_last: False
+    shuffle: True
+    drop_last: True
     collate_fn: 
       _target_: voco.collate_fn.get_collate_fn
     dataset:
       _target_: voco.datasets.LJspeechDataset
       part: train
-      limit: 20
       segment_length: 8192
+      max_audio_length: 5
+      limit: 1
   val:
     _target_: torch.utils.data.DataLoader
-    batch_size: 20
+    batch_size: 1
     num_workers: 10
     shuffle: False
     drop_last: False
@@ -29,8 +30,9 @@ data:
     dataset:
       _target_: voco.datasets.LJspeechDataset
       part: train
-      limit: 20
       segment_length: 8192
+      max_audio_length: 5
+      limit: 1
 metrics: []
 device: 
   _target_: torch.device
@@ -69,21 +71,21 @@ generator:
         - 1
 discriminator:
   _target_: voco.model.Discriminator
-  periods: [2]
+  periods: [2, 3, 5, 7, 11]
   scales: [1, 2, 4]
 g_loss:
   _target_: voco.loss.HiFiGANLoss_G
   fm: 0
   gan: 0
-  mel: 1.0
+  mel: 45.0
 d_loss:
   _target_: voco.loss.GANLoss_DG
 d_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.75
+  gamma: 0.999
 g_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.75
+  gamma: 0.999
 g_optimizer:
   _target_: torch.optim.AdamW
   weight_decay: 0.01
@@ -103,7 +105,9 @@ trainer:
   epochs: 10
   save_period: 200000
   verbosity: 2
+  monitor: min val_loss
   save_dir: saved/${name}/
+  early_stop: 100
   visualize: wandb
   wandb_project: voco_project
   len_epoch: 100

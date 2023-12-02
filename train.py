@@ -20,7 +20,7 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 
-@hydra.main(version_base=None, config_path="voco/configs/", config_name="hifigan_test")
+@hydra.main(version_base=None, config_path="voco/configs/", config_name="hifigan")
 def main(config: DictConfig):
     config2 = yaml.safe_load(OmegaConf.to_yaml(config))
     run_id = datetime.now().strftime(r"%m%d_%H%M%S")

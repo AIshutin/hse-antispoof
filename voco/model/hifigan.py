@@ -45,20 +45,25 @@ class MRF(nn.Module):
         out = 0
         for el in self.layers:
             out = out + el(X)
-        return out
+        return out / len(self.layers) # adds stability and speed to training, but in theory is not needed
 
 
 class GeneratorBlock(nn.Module):
     def __init__(self, kernel, channels, kr, Dr) -> None:
         super().__init__()
         stride = kernel // 2
-        self.conv_t = weight_norm(nn.ConvTranspose1d(channels * 2, channels, kernel_size=kernel,
+        conv_t = weight_norm(nn.ConvTranspose1d(channels * 2, channels, kernel_size=kernel,
                                                      stride=stride, padding= (kernel - stride) // 2))
+        conv_t.weight.data.normal_(MEAN, STD)
+        self.net = nn.Sequential(
+            get_activation(),
+            conv_t
+        )
         
         self.mrf = MRF(channels, kr, Dr)
     
     def forward(self, X):
-        X = self.conv_t(X)
+        X = self.net(X)
         return self.mrf(X)
 
 
@@ -71,6 +76,7 @@ class Generator(nn.Module):
         self.net = nn.Sequential(
             *[GeneratorBlock(ku[l], hu // 2 ** (1 + l), kr, Dr) for l in range(len(ku))]
         )
+        self.act = get_activation()
         self.postnet = weight_norm(nn.Conv1d(hu // 2 ** len(ku), 1, kernel_size=7, padding=3))
         self.postnet.weight.data.normal_(MEAN, STD)
         self.tanh = nn.Tanh()
@@ -78,6 +84,7 @@ class Generator(nn.Module):
     def forward(self, spectrogram, **kwargs):
         X = self.prenet(spectrogram)
         X = self.net(X)
+        X = self.act(X)
         X = self.postnet(X)
         X = self.tanh(X)
         X = X.reshape(X.shape[0], X.shape[-1])
@@ -165,6 +172,7 @@ class MSD(nn.Module):
         assert(len(features) != 0)
         return features
 
+
 class Discriminator(nn.Module):
     def __init__(self, periods, scales) -> None:
         super().__init__()
@@ -181,7 +189,7 @@ class Discriminator(nn.Module):
         discrim_hat_p = []
         discrim_p = []
         total_discriminators = 0
-
+        
         assert(audio.shape == audio_hat.shape)
 
         for net in self.mpds:

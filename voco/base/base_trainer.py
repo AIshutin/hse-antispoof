@@ -159,16 +159,11 @@ class BaseTrainer:
         }
         if hasattr(self, 'd_lr_scheduler'):
             state['d_lr_scheduler'] = self.d_lr_scheduler.state_dict()
-        if hasattr(self, 'd_lr_scheduler'):
+        if hasattr(self, 'g_lr_scheduler'):
             state['g_lr_scheduler'] = self.g_lr_scheduler.state_dict()
         filename = str(self.checkpoint_dir / "checkpoint-epoch{}.pth".format(epoch))
-        if not (only_best and save_best):
-            torch.save(state, filename)
-            self.logger.info("Saving checkpoint: {} ...".format(filename))
-        if save_best:
-            best_path = str(self.checkpoint_dir / "model_best.pth")
-            torch.save(state, best_path)
-            self.logger.info("Saving current best: model_best.pth ...")
+        torch.save(state, filename)
+        self.logger.info("Saving checkpoint: {} ...".format(filename))
 
     def _resume_checkpoint(self, resume_path):
         """

@@ -20,7 +20,7 @@ from voco.audio.mel import config as mel_config
 def make_audio_item(wave, writer):
     if not isinstance(writer, WanDBWriter):
         raise NotImplemented(f"{str(type(writer))};{writer} is not supported here")
-    wave = wave.detach().cpu().numpy()
+    wave = wave.detach().cpu().flatten().numpy()
     return writer.wandb.Audio(wave, sample_rate=mel_config.sr)
 
 
@@ -221,7 +221,7 @@ class Trainer(BaseTrainer):
     
     def process_test_batch(self, batch):
         batch = self.move_batch_to_device(batch, self.device)
-        outputs = self.model(spectrogram=batch['spectrogram'])
+        outputs = self.generator(spectrogram=batch['spectrogram'])
         assert(type(outputs) is dict)
         batch.update(outputs)
         return batch
