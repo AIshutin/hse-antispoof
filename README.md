@@ -12,14 +12,38 @@ gdown  -O default_test_model/checkpoint.pth --fuzzy
 
 ## Usage guide
 
-To train:
+You can choose between 2 pipelines: "the clown" and "the normal one".
+
+"The clown" is trained using 2 different configs and fixing dataset bug in between.  
+"The normal one" is trained using one config and no bugs, but its checkpoint undertrained at the moment.
+
+### To train
+
+To train "the clown":
 ```shell
-python3 train.py --config-name fastspeech2
+python3 train.py --config-name hifigan-bug
+python3 train.py --config-name hifigan2 +resume=saved/hifigan-mk1/path2checkoint.pth
 ```
 
-To synthesize audio:
-```
-python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/checkpoint.pth
+To train "the normal one":
+```shell
+python3 train.py --config-name hifigan
 ```
 
-Feel free to change `voco/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.
+### To synthesize audio:
+
+"The clown": 
+
+```shell
+gdown https://drive.google.com/file/d/1SoDH__65dA808Eh5EVEJTgcMLgLsldyP/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
+python3 train.py --config-name hifigan-bug.yaml +trainer.checkpoint_path=default_test_model/checkpoint.pth
+```
+
+"The normal one":
+
+```shell
+gdown $your_link -O default_test_model/checkpoint.pth --fuzzy
+python3 train.py --config-name hifigan.yaml +trainer.checkpoint_path=default_test_model/checkpoint.pth
+```
+
+You can change wavs in test_data if you want.

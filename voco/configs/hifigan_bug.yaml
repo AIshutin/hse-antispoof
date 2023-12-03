@@ -17,6 +17,7 @@ data:
       _target_: voco.datasets.LJspeechDataset
       part: train
       segment_length: 8192
+      bug: True
   val:
     _target_: torch.utils.data.DataLoader
     batch_size: 64
@@ -29,6 +30,7 @@ data:
       _target_: voco.datasets.LJspeechDataset
       part: test
       segment_length: 8192
+      bug: True
   test:
     _target_: torch.utils.data.DataLoader
     batch_size: 1
@@ -47,6 +49,7 @@ device:
 generator:
   _target_: voco.model.Generator
   in_channels: 80
+  weight_reinit: True
   hu: 512
   ku: 
     - 16
@@ -89,10 +92,10 @@ d_loss:
   _target_: voco.loss.GANLoss_DG
 d_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.99
+  gamma: 0.999
 g_lr_scheduler:
   _target_: voco.scheduler.getExponentialScheduler
-  gamma: 0.99
+  gamma: 0.999
 g_optimizer:
   _target_: torch.optim.AdamW
   weight_decay: 0.01
@@ -109,8 +112,8 @@ d_optimizer:
   - 0.99
 trainer:
   _target_: voco.trainer.Trainer
-  epochs: 100000
-  save_period: 5
+  epochs: 38
+  save_period: 38
   verbosity: 2
   save_dir: saved/${name}/
   visualize: wandb

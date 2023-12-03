@@ -49,6 +49,7 @@ device:
 generator:
   _target_: voco.model.Generator
   in_channels: 80
+  weight_reinit: True
   hu: 512
   ku: 
     - 16

@@ -3,11 +3,19 @@ from torch.nn import functional as F
 import torch
 from typing import List
 from torch.nn.utils import weight_norm, spectral_norm # since I use torch 2.0
-# from torch.nn.utils.parametrizations import weight_norm
+
+
+class MetaConfiguration:
+    '''
+    This is a crouch for backward compability. You can remove this code if don't use clown pipeline
+    '''
+    weight_reinit: False
 
 
 def get_activation():
-    return nn.LeakyReLU(0.1)
+    if MetaConfiguration:
+        return nn.LeakyReLU(0.1)
+    return nn.LeakyReLU()
 
 
 MEAN = 0
@@ -23,7 +31,8 @@ class ResBlock(nn.Module):
                 layers.append(get_activation())
                 layers.append(weight_norm(nn.Conv1d(channels, channels, kernel_size=kernel, 
                                                     dilation=Dr[i][j], padding='same')))
-                layers[-1].weight.data.normal_(MEAN, STD)
+                if MetaConfiguration.weight_reinit:
+                    layers[-1].weight.data.normal_(MEAN, STD)
             conv_blocks.append(nn.Sequential(*layers))
         
         self.blocks = nn.ModuleList(conv_blocks)
@@ -54,7 +63,7 @@ class GeneratorBlock(nn.Module):
         stride = kernel // 2
         conv_t = weight_norm(nn.ConvTranspose1d(channels * 2, channels, kernel_size=kernel,
                                                      stride=stride, padding= (kernel - stride) // 2))
-        conv_t.weight.data.normal_(MEAN, STD)
+        # conv_t.weight.data.normal_(MEAN, STD)
         self.net = nn.Sequential(
             get_activation(),
             conv_t
@@ -69,16 +78,19 @@ class GeneratorBlock(nn.Module):
 
 class Generator(nn.Module):
     def __init__(self, in_channels: int, hu: int, ku: List[int], 
-                 kr: List[int], Dr: List[List[int]]) -> None:
+                 kr: List[int], Dr: List[List[int]], weight_reinit=False) -> None:
         super().__init__()
         self.prenet = weight_norm(nn.Conv1d(in_channels, hu, kernel_size=7, padding=3))
-        self.prenet.weight.data.normal_(MEAN, STD)
+        MetaConfiguration.weight_reinit = weight_reinit
+        if MetaConfiguration.weight_reinit:
+            self.prenet.weight.data.normal_(MEAN, STD)
         self.net = nn.Sequential(
             *[GeneratorBlock(ku[l], hu // 2 ** (1 + l), kr, Dr) for l in range(len(ku))]
         )
         self.act = get_activation()
         self.postnet = weight_norm(nn.Conv1d(hu // 2 ** len(ku), 1, kernel_size=7, padding=3))
-        self.postnet.weight.data.normal_(MEAN, STD)
+        if MetaConfiguration.weight_reinit:
+            self.postnet.weight.data.normal_(MEAN, STD)
         self.tanh = nn.Tanh()
     
     def forward(self, spectrogram, **kwargs):
