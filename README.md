@@ -35,14 +35,14 @@ python3 train.py --config-name hifigan
 
 ```shell
 gdown https://drive.google.com/file/d/1SoDH__65dA808Eh5EVEJTgcMLgLsldyP/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
-python3 train.py --config-name hifigan_bug +trainer.checkpoint_path=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=1 +data.val.dataset.limit=1
+python3 train.py --config-name hifigan_bug +resume=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=77 +data.val.dataset.limit=1
 ```
 
 "The normal one":
 
 ```shell
 gdown https://drive.google.com/file/d/1LmNT_XSEHxnd6IgAhX7CULXZEWgFI7Sw/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
-python3 train.py --config-name hifigan +trainer.checkpoint_path=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=1 +data.val.dataset.limit=1
+python3 train.py --config-name hifigan +resume=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=77 +data.val.dataset.limit=1
 ```
 
 The data will be logged to wandb. You can change wavs in test_data if you want.
