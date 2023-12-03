@@ -1,13 +1,12 @@
-# voco Project
+# Vocoder Project
 
-Based on this [template](https://github.com/WrathOfGrapes/asr_project_template) and [this FastSpeech 1 implementation](https://github.com/xcmyz/FastSpeech).
+Based on this [template](https://github.com/WrathOfGrapes/asr_project_template)
 
 ## Installation guide
 
 ```
 pip install -r ./requirements.txt
-gdown  -O default_test_model/checkpoint.pth --fuzzy
-
+mkdir default_test_model
 ```
 
 ## Usage guide
@@ -15,7 +14,7 @@ gdown  -O default_test_model/checkpoint.pth --fuzzy
 You can choose between 2 pipelines: "the clown" and "the normal one".
 
 "The clown" is trained using 2 different configs and fixing dataset bug in between.  
-"The normal one" is trained using one config and no bugs, but its checkpoint undertrained at the moment.
+"The normal one" is trained using one config and no bugs, but its checkpoint is undertrained at the moment.
 
 ### To train
 
@@ -36,14 +35,14 @@ python3 train.py --config-name hifigan
 
 ```shell
 gdown https://drive.google.com/file/d/1SoDH__65dA808Eh5EVEJTgcMLgLsldyP/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
-python3 train.py --config-name hifigan-bug.yaml +trainer.checkpoint_path=default_test_model/checkpoint.pth
+python3 train.py --config-name hifigan_bug +trainer.checkpoint_path=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=1 +data.val.dataset.limit=1
 ```
 
 "The normal one":
 
 ```shell
-gdown $your_link -O default_test_model/checkpoint.pth --fuzzy
-python3 train.py --config-name hifigan.yaml +trainer.checkpoint_path=default_test_model/checkpoint.pth
+gdown https://drive.google.com/file/d/1LmNT_XSEHxnd6IgAhX7CULXZEWgFI7Sw/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
+python3 train.py --config-name hifigan +trainer.checkpoint_path=default_test_model/checkpoint.pth ++trainer.len_epoch=1 ++g_optimizer.lr=0 ++trainer.epochs=1 +data.val.dataset.limit=1
 ```
 
-You can change wavs in test_data if you want.
+The data will be logged to wandb. You can change wavs in test_data if you want.
