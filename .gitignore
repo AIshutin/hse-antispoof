@@ -14,6 +14,8 @@ output.json
 *.arpa
 librispeech-*.txt
 *.pth
+LA
+LA.zip
 
 # C extensions
 *.so

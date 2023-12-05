@@ -1,0 +1,66 @@
+name: unittest
+logger:
+  _target_: antispoof.logger.logger.get_logger
+  experiment_name: ${name}
+  name: train
+  save_dir: ${trainer.save_dir}
+data:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 65
+    num_workers: 10
+    shuffle: True
+    drop_last: False
+    collate_fn: 
+      _target_: antispoof.collate_fn.get_collate_fn
+    dataset:
+      _target_: antispoof.datasets.LADataset
+      part: train
+      limit: 65
+      sr: ${trainer.sr}
+      spec_processing:
+          _target_: torchaudio.transforms.LFCC
+          sample_rate: ${trainer.sr}
+  val:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 32
+    num_workers: 10
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: antispoof.collate_fn.get_collate_fn
+    dataset:
+      _target_: antispoof.datasets.LADataset
+      part: train
+      limit: 65
+      sr: ${trainer.sr}
+      spec_processing:
+          _target_: torchaudio.transforms.LFCC
+          sample_rate: ${trainer.sr}
+metrics:
+  - _target_: antispoof.metric.Accuracy
+device: 
+  _target_: torch.device
+  device: "cuda:0"
+arch:
+  _target_: antispoof.model.PlaceholderModel
+loss:
+  _target_: antispoof.loss.CELoss
+lr_scheduler:
+  _target_: antispoof.scheduler.getExponentialScheduler
+  gamma: 0.95
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.0001
+trainer:
+  _target_: antispoof.trainer.Trainer
+  epochs: 100
+  save_period: 5
+  verbosity: 2
+  save_dir: saved/${name}/
+  visualize: wandb
+  wandb_project: antispoof_project
+  len_epoch: 50
+  grad_norm_clip: 100
+  scheduler_steps: 25
+  sr: 16000

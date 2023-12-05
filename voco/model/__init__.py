@@ -1,1 +1,0 @@
-from voco.model.hifigan import Discriminator, Generator

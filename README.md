@@ -1,4 +1,4 @@
-# Vocoder Project
+# Speech Antispoofing Project
 
 Based on this [template](https://github.com/WrathOfGrapes/asr_project_template)
 
@@ -7,6 +7,8 @@ Based on this [template](https://github.com/WrathOfGrapes/asr_project_template)
 ```
 pip install -r ./requirements.txt
 mkdir default_test_model
+wget https://datashare.ed.ac.uk/bitstream/handle/10283/3336/LA.zip
+unzip LA.zip
 ```
 
 ## Usage guide
