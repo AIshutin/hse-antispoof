@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
+
 class LADataset(BaseDataset):
     def __init__(self, part, data_dir=None, *args, **kwargs):
         if data_dir is None:
@@ -45,12 +46,13 @@ class LADataset(BaseDataset):
         audio_path = self._data_dir / f'ASVspoof2019_LA_{part}/flac'
 
         with open(protocol_path) as file:
-            for line in file:
+            for line in tqdm(file.readlines()):
                 # example: LA_0069 LA_D_1047731 - - bonafide
                 ref, audio, _, _, cls = line.strip().split()
                 index.append({
                     "audio": str(audio_path / (audio + '.flac')),
-                    "target": 0 if 'bonafide' in cls else 1
+                    "target": 1 if 'bonafide' in cls else 0,
+                    "cls": cls
                 })
                 t_info = torchaudio.info(str(index[-1]['audio']))
                 audio_length = t_info.num_frames / t_info.sample_rate

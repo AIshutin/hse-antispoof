@@ -2,11 +2,14 @@ import json
 from collections import OrderedDict
 from itertools import repeat
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import torch
 import os
 import yaml
+import torch
+import torchaudio
 
 
 ROOT_PATH = Path(__file__).absolute().resolve().parent.parent.parent
@@ -91,3 +94,30 @@ class MetricTracker:
 
     def keys(self):
         return self._data.total.keys()
+
+
+class STFT_transformer:
+    def __init__(self, n_fft, hop_length, window_length) -> None:
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.window_length = window_length
+    
+    def __call__(self, X) -> Any:
+        return torch.stft(X, self.n_fft, 
+                          return_complex=True, 
+                          hop_length=self.hop_length, 
+                          win_length=self.window_length).real
+
+
+class LFCC:
+    def __init__(self, n_dim, sr, speckwargs) -> None:
+        assert(n_dim % 3 == 0)
+        self.lfcc = torchaudio.transforms.LFCC(sr, n_lfcc=n_dim // 3, speckwargs=speckwargs)
+        self.delta = torchaudio.transforms.ComputeDeltas()
+    
+    def __call__(self, X):
+        X = self.lfcc(X)
+        Xd = self.delta(X)
+        Xdd = self.delta(Xd)
+        X = torch.cat((X, Xd, Xdd), dim=1)
+        return X

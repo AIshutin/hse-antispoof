@@ -16,6 +16,7 @@ class PlaceholderModel(BaseModel):
         )
 
     def forward(self, spectrogram, **batch):
+        print(spectrogram.shape)
         spec = spectrogram.mean(dim=(-1, -2)).reshape(-1, 1)
         return {
             "target_hat": self.net(spec)

@@ -8,12 +8,15 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from torchvision.transforms import ToTensor
 from tqdm import tqdm
+import numpy as np
 
 from antispoof.base import BaseTrainer
 from antispoof.utils import inf_loop, MetricTracker
 from ..logger.wandb import WanDBWriter
+from antispoof.utils import ROOT_PATH
 import json
 import os
+from ..calculate_eer import compute_eer
 
 
 def make_audio_item(wave, writer, sr):
@@ -59,8 +62,8 @@ class Trainer(BaseTrainer):
                          logger=logger, config=config)
         self.skip_oom = skip_oom
         self.train_dataloader = dataloaders["train"]
-        print('TRAIN DATALODER', self.train_dataloader)
-        logger.info(f"Model size: {calc_params(model)/1e6:.4f}M")
+        self.logger.info(f'Train dataloader size {len(self.train_dataloader)}')
+        self.logger.info(f"Model size: {calc_params(model)/1e6:.4f}M")
         if len_epoch is None:
             # epoch-based training
             self.len_epoch = len(self.train_dataloader)
@@ -69,7 +72,7 @@ class Trainer(BaseTrainer):
             self.train_dataloader = inf_loop(self.train_dataloader)
             self.len_epoch = len_epoch
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items() if k != "train"}
-        self.log_step =  config['trainer'].get('log_step', 10)
+        self.log_step =  config['trainer'].get('log_step', 100)
         self.loss_keys = ['loss']
 
         self.train_metrics = MetricTracker(
@@ -79,10 +82,9 @@ class Trainer(BaseTrainer):
         )
         self.evaluation_metrics = MetricTracker(
             *self.loss_keys,
+            'eer', 'eer_thr',
             *[m.name for m in self.metrics], writer=self.writer
         )
-        self.cnt = 0
-        self.scheduler_steps = config['trainer']['scheduler_steps']
     
     @staticmethod
     def move_batch_to_device(batch, device: torch.device):
@@ -150,13 +152,11 @@ class Trainer(BaseTrainer):
                 if batch_idx >= self.len_epoch:
                     break
             log = last_train_metrics
+            self.lr_scheduler.step()
 
             for part, dataloader in self.evaluation_dataloaders.items():
-                if part == "test":
-                    val_log = self._evaluation_epoch_test(epoch, part, dataloader)
-                else:
-                    val_log = self._evaluation_epoch(epoch, part, dataloader)
-                    log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+                val_log = self._evaluation_epoch(epoch, part, dataloader)
+                log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
             return log
 
@@ -173,9 +173,6 @@ class Trainer(BaseTrainer):
             batch["loss"].backward()
             self._clip_grad_norm()
             self.optimizer.step()
-            self.cnt += 1
-            if self.cnt % self.scheduler_steps == 0:
-                self.lr_scheduler.step()
 
         for key in self.loss_keys:
             metrics.update(key, batch[key].item())
@@ -183,46 +180,7 @@ class Trainer(BaseTrainer):
             if met.name in metrics.tracked_metrics:
                 metrics.update(met.name, met(**batch))
         return batch
-    
-    def process_test_batch(self, batch):
-        batch = self.move_batch_to_device(batch, self.device)
-        outputs = self.model(spectrogram=batch['spectrogram'])
-        assert(type(outputs) is dict)
-        batch.update(outputs)
-        return batch
-
-
-    def _evaluation_epoch_test(self, epoch, part, dataloader):
-        """
-        Validate after training an epoch
-
-        :param epoch: Integer, current training epoch.
-        :return: A log that contains information about validation
-        """
-        self.model.eval()
-        self.evaluation_metrics.reset()
-        return 
-        with torch.no_grad():
-            batches = []
-            for batch_idx, batch in tqdm(
-                    enumerate(dataloader),
-                    desc=part,
-                    total=len(dataloader),
-            ):
-                batch = self.process_test_batch(batch)
-                batches.append(batch)
-            
-            self.writer.set_step(epoch * self.len_epoch, part)
-            rows = {}
-            for i, batch in enumerate(batches):
-                audio_path = batch['audio_path']
-                rows[str(i) + audio_path[0]] = {
-                    "audio_hat": make_audio_item(batch['audio_hat'], self.writer, sample_rate=self.sr),
-                    "audio": make_audio_item(batch['audio'], self.writer, sample_rate=self.sr),
-                    "name": audio_path
-                }
-            self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
-
+        
 
     def _evaluation_epoch(self, epoch, part, dataloader):
         """
@@ -232,6 +190,7 @@ class Trainer(BaseTrainer):
         :return: A log that contains information about validation
         """
         self.model.eval()
+        scores = [[] for i in range(2)]
         with torch.no_grad():
             for batch_idx, batch in tqdm(
                     enumerate(dataloader),
@@ -243,16 +202,23 @@ class Trainer(BaseTrainer):
                     is_train=False,
                     metrics=self.evaluation_metrics,
                 )
+                for score, target in zip(batch["target_hat"], batch['target']):
+                    score = F.softmax(score)[1].item()
+                    target = target.item()
+                    scores[target].append(score)
             self.writer.set_step(epoch * self.len_epoch, part)
             if part != "test":
                 self._log_scalars(self.evaluation_metrics)
             self._log_predictions(**batch, is_test=part == "test")
-            # self._log_audio(batch["audio"], batch['audio_hat'])
 
-        # add histogram of model parameters to the tensorboard
-        #for name, p in self.model.named_parameters():
-        #    self.writer.add_histogram(name, p, bins="auto")
-        return self.evaluation_metrics.result()
+        scores = [np.array(scores[0]), np.array(scores[1])]
+        eer, eer_thr = compute_eer(scores[1], scores[0])
+        out = self.evaluation_metrics.result()
+        self.writer.add_scalar(f"{part}_eer", eer)
+        self.writer.add_scalar(f"{part}_eer_thr", eer_thr)
+        out['eer'] = eer
+        out['eer_thr'] = eer_thr
+        return out
 
     def _progress(self, batch_idx):
         base = "[{}/{} ({:.0f}%)]"

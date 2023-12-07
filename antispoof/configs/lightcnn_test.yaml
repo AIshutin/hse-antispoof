@@ -4,11 +4,6 @@ logger:
   experiment_name: ${name}
   name: train
   save_dir: ${trainer.save_dir}
-#spec_preprocessing:
-#  _target_: torchaudio.transforms.LFCC
-#  sample_rate: ${trainer.sr}
-#  n_lfcc: 60
-#  n_filter: 512
 spec_processing:
   _target_: antispoof.utils.STFT_transformer
   n_fft: 512
@@ -51,7 +46,9 @@ device:
   _target_: torch.device
   device: "cuda:0"
 arch:
-  _target_: antispoof.model.PlaceholderModel
+  _target_: antispoof.model.LightCNN
+  ifc_size: 23552
+  dropout_p: 0.4
 loss:
   _target_: antispoof.loss.CELoss
 lr_scheduler:

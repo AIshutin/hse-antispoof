@@ -5,9 +5,11 @@ from torch import nn
 
 
 class CELoss(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, weight=None) -> None:
         super().__init__()
-        self.loss = nn.CrossEntropyLoss()
+        if weight is not None:
+            weight = torch.tensor(weight)
+        self.loss = nn.CrossEntropyLoss(weight=weight)
 
     def forward(self, target_hat, target, **kwargs):
         return {"loss": self.loss(target_hat, target)}

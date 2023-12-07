@@ -19,6 +19,7 @@ class BaseDataset(Dataset):
             spec_processing,
             limit=None,
             max_audio_length=None,
+            spec_segment_length=750
     ):
 
         self._assert_index_is_valid(index)
@@ -29,10 +30,16 @@ class BaseDataset(Dataset):
         self._index: List[dict] = index
         self.sr = sr
         self.spec_processing = spec_processing
+        self.spec_segment_length = spec_segment_length
 
     def __getitem__(self, ind):
         data_dict = self._index[ind]
         audio_wave, audio_spec = self.load_audio(data_dict["audio"])
+        if audio_spec.shape[-1] < self.spec_segment_length:
+            audio_spec = torch.nn.functional.pad(audio_spec, (0, self.spec_segment_length - audio_spec.shape[-1]))
+        else:
+            n = random.randint(0, audio_spec.shape[-1] - self.spec_segment_length)
+            audio_spec = audio_spec[:, :, n:n + self.spec_segment_length]
 
         out_dict = {
             "audio": audio_wave,
@@ -104,6 +111,6 @@ class BaseDataset(Dataset):
             )
             assert "target" in entry, (
                 "Each dataset item should include field 'target'"
-                " - target. 0 is spoof, 1 is bonafide"
+                " - target. 1 is bonafide, 0 is spoof"
             )
             

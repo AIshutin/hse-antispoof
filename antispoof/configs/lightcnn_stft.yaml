@@ -1,14 +1,9 @@
-name: unittest
+name: lightcnn-stft
 logger:
   _target_: antispoof.logger.logger.get_logger
   experiment_name: ${name}
   name: train
   save_dir: ${trainer.save_dir}
-#spec_preprocessing:
-#  _target_: torchaudio.transforms.LFCC
-#  sample_rate: ${trainer.sr}
-#  n_lfcc: 60
-#  n_filter: 512
 spec_processing:
   _target_: antispoof.utils.STFT_transformer
   n_fft: 512
@@ -17,7 +12,7 @@ spec_processing:
 data:
   train:
     _target_: torch.utils.data.DataLoader
-    batch_size: 65
+    batch_size: 64
     num_workers: 10
     shuffle: True
     drop_last: False
@@ -26,13 +21,12 @@ data:
     dataset:
       _target_: antispoof.datasets.LADataset
       part: train
-      limit: 65
       sr: ${trainer.sr}
       spec_processing: ${spec_processing}
       spec_segment_length: 750
   val:
     _target_: torch.utils.data.DataLoader
-    batch_size: 32
+    batch_size: 64
     num_workers: 10
     shuffle: False
     drop_last: False
@@ -40,8 +34,21 @@ data:
       _target_: antispoof.collate_fn.get_collate_fn
     dataset:
       _target_: antispoof.datasets.LADataset
-      part: train
-      limit: 65
+      part: dev
+      sr: ${trainer.sr}
+      spec_processing: ${spec_processing}
+      spec_segment_length: 750
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 64
+    num_workers: 10
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: antispoof.collate_fn.get_collate_fn
+    dataset:
+      _target_: antispoof.datasets.LADataset
+      part: eval
       sr: ${trainer.sr}
       spec_processing: ${spec_processing}
       spec_segment_length: 750
@@ -51,24 +58,37 @@ device:
   _target_: torch.device
   device: "cuda:0"
 arch:
-  _target_: antispoof.model.PlaceholderModel
+  _target_: antispoof.model.LightCNN
+  ifc_size: 23552
+  dropout_p: 0.75
+  dropout_fc: 0.75
+  sr: ${trainer.sr}
+  banks: False
+  kaiman: True
 loss:
   _target_: antispoof.loss.CELoss
+  weight:
+  - 9.0
+  - 1.0
 lr_scheduler:
   _target_: antispoof.scheduler.getExponentialScheduler
-  gamma: 0.95
+  gamma: 0.707
 optimizer:
-  _target_: torch.optim.AdamW
-  lr: 0.0001
+  _target_: torch.optim.Adam
+  betas:
+    - 0.9
+    - 0.999
+  eps: 0.00000001
+  lr: 0.0003
 trainer:
   _target_: antispoof.trainer.Trainer
-  epochs: 100
-  save_period: 5
+  epochs: 30
+  save_period: 1
   verbosity: 2
   save_dir: saved/${name}/
   visualize: wandb
   wandb_project: antispoof_project
-  len_epoch: 50
-  grad_norm_clip: 100
+  monitor: min val_loss
   scheduler_steps: 25
   sr: 16000
+  len_epoch: 1985
