@@ -1,2 +1,2 @@
 from antispoof.model.placeholder_model import PlaceholderModel
-from .lightcnn import LightCNN
+from .lightcnn import *

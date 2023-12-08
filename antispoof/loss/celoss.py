@@ -11,5 +11,5 @@ class CELoss(nn.Module):
             weight = torch.tensor(weight)
         self.loss = nn.CrossEntropyLoss(weight=weight)
 
-    def forward(self, target_hat, target, **kwargs):
-        return {"loss": self.loss(target_hat, target)}
+    def forward(self, logits, target, **kwargs):
+        return {"loss": self.loss(logits, target)}

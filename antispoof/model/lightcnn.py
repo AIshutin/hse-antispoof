@@ -26,28 +26,99 @@ class MFM2x1(nn.Module):
 
 
 def kaiman_trick(m):
+    print('Kaiman trick')
     if not isinstance(m, nn.Linear) and not isinstance(m, nn.Conv2d):
         return
+    
     nn.init.zeros_(m.bias)
     nn.init.kaiming_normal_(m.weight)
 
-class LightCNN(nn.Module):
-    def __init__(self, ifc_size, dropout_p=0.1, dropout_fc=0.7, sr=16000, banks=False, kaiman=False) -> None:
-        super().__init__()
-        if banks:
-            self.prelinear = nn.Linear(257, 60)
-            torch.nn.init.zeros_(self.prelinear.bias)
-            new_weights = torchaudio.functional.linear_fbanks(
-                n_freqs=257,
-                n_filter=60,
-                f_max=sr / 2,
-                f_min=0,
-                sample_rate=sr
-            ).T
-            assert(new_weights.shape == self.prelinear.weight.shape)
-            with torch.no_grad():
-                self.prelinear.weight = nn.Parameter(new_weights)
 
+class AMSoftmax(nn.Module):
+    def __init__(self, m=0.2) -> None:
+        super().__init__()
+        self.m = m
+        self.w = nn.Linear(2, 2, bias=False).weight
+    
+    def forward(self, X, fast=False):
+        with torch.no_grad():
+            self.w /= torch.norm(self.w, dim=-1) 
+        
+        X_norm = torch.norm(X, dim=-1)
+        X /= X_norm
+        cos_theta = X @ self.w.T
+        theta = torch.acos(cos_theta)
+        exp_wo_margins = torch.exp(X_norm * cos_theta)
+        exp_with_margins = torch.exp(X_norm * torch.cos(theta * self.m))
+        p1 = exp_with_margins[:, 1] / (exp_wo_margins[:, 0] + exp_with_margins[:, 1])
+        p0 = exp_with_margins[:, 0] / (exp_wo_margins[:, 1] + exp_with_margins[:, 0])
+        score = exp_wo_margins[:, 1] / (exp_wo_margins.sum(dim=-1))
+
+        out = { 
+            "p1": p1,
+            "p0": p0,
+            "score": score
+        }
+        return out
+
+
+class NormalSoftmax(nn.Module):
+    def __init__(self,) -> None:
+        super().__init__()
+        self.softmax = nn.Softmax(dim=-1)
+    
+    def forward(self, X, fast):
+        if not fast:
+            probs = self.softmax(X)
+            return {
+                "logits": X,
+                "p1": probs[:, 1],
+                "p0": probs[:, 0],
+                "score": probs[:, 1]
+            }
+        else:
+            return {
+                "logits": X,
+                "p1": X[:, 1],
+                "p0": X[:, 0],
+                "score": (X[:, 1] > X[:, 0]).float()
+            }
+
+
+class LinearHead(nn.Module):
+    def __init__(self, ifc, dropout, bias=True, kaiman=False):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(ifc, 160),
+            MFM2x1(160, -1),
+            nn.BatchNorm1d(80),
+            nn.Dropout(dropout),
+            nn.Linear(80, 2, bias=bias)
+        )
+        if kaiman:
+            self.net.apply(kaiman_trick)
+
+    def forward(self, X):
+        return self.net(X)
+
+
+class LightCNNTrim(nn.Module):
+    def __init__(self, backbone, head, softmax) -> None:
+        super().__init__()
+        self.backbone = backbone
+        self.head = head
+        self.softmax = softmax
+    
+    def forward(self, spectrogram, fast=False, **kwargs):
+        X = self.backbone(spectrogram)
+        X = self.head(X)
+        X = self.softmax(X, fast)
+        return X
+
+
+class LightCNNBackbone(nn.Module):
+    def __init__(self, dropout, kaiman) -> None:
+        super().__init__()
         self.block1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=5, padding=2),
             MFM2x1(64)
@@ -84,33 +155,18 @@ class LightCNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             MFM2x1(64),
-            nn.Dropout(dropout_p)
-        )
-
-        self.head = nn.Sequential(
-            nn.Linear(ifc_size, 160),
-            MFM2x1(160, -1),
-            nn.BatchNorm1d(80),
-            nn.Dropout(dropout_fc),
-            nn.Linear(80, 2)
+            nn.Dropout(dropout)
         )
 
         if kaiman:
-            self.init_weights()
+            self.block1.apply(kaiman_trick)
+            self.block2.apply(kaiman_trick)
+            self.block3.apply(kaiman_trick)
+            self.block4.apply(kaiman_trick)
+
     
-    def init_weights(self):
-        print('KAIMAN TRICK')
-        self.block1.apply(kaiman_trick)
-        self.block2.apply(kaiman_trick)
-        self.block3.apply(kaiman_trick)
-        self.block4.apply(kaiman_trick)
-        self.head.apply(kaiman_trick)
-    
-    def forward(self, spectrogram, **batch):
-        X = spectrogram
-        if hasattr(self, 'prelinear'):
-            X = self.prelinear(spectrogram.transpose(-1, -2)).transpose(-1, -2)
-        X = X.unsqueeze(1)
+    def forward(self, spectrogram):
+        X = spectrogram.unsqueeze(1)
         
         X = self.block1(X)
         X = self.pool(X)
@@ -121,12 +177,7 @@ class LightCNN(nn.Module):
         X = self.block4(X)
         X = self.pool(X)
         X = X.reshape(X.shape[0], -1)
-        X = self.head(X)
-
-        return {
-            "target_hat": X
-        }
-
+        return X
 
 if __name__ == "__main__":    
     X = torch.randn(16, 10, 3, 6)

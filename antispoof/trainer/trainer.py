@@ -164,7 +164,7 @@ class Trainer(BaseTrainer):
         batch = self.move_batch_to_device(batch, self.device)
         if is_train:
             self.optimizer.zero_grad()
-        outputs = self.model(**batch)
+        outputs = self.model(**batch, fast=is_train)
         assert(type(outputs) is dict)
         batch.update(outputs)
         batch.update(self.criterion(**batch))
@@ -202,10 +202,8 @@ class Trainer(BaseTrainer):
                     is_train=False,
                     metrics=self.evaluation_metrics,
                 )
-                for score, target in zip(batch["target_hat"], batch['target']):
-                    score = F.softmax(score)[1].item()
-                    target = target.item()
-                    scores[target].append(score)
+                for score, target in zip(batch["score"], batch['target']):
+                    scores[target.item()].append(score.item())
             self.writer.set_step(epoch * self.len_epoch, part)
             if part != "test":
                 self._log_scalars(self.evaluation_metrics)
@@ -234,7 +232,7 @@ class Trainer(BaseTrainer):
             self,
             audio,
             target,
-            target_hat,
+            score,
             audio_path,
             examples_to_log=10,
             *args,
@@ -242,9 +240,7 @@ class Trainer(BaseTrainer):
     ):
         if self.writer is None:
             return
-        
-        predictions = F.softmax(target_hat, dim=-1).argmax(dim=-1)
-        tuples = list(zip(audio, target, predictions, audio_path))
+        tuples = list(zip(audio, target, score, audio_path))
         shuffle(tuples)
         rows = {}
         for audio, target, target_hat, audio_path in tuples[:examples_to_log]:

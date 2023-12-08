@@ -5,7 +5,7 @@ logger:
   name: train
   save_dir: ${trainer.save_dir}
 spec_processing:
-  _target_: antispoof.utils.STFT_transformer
+  _target_: antispoof.frontend.STFT
   n_fft: 512
   window_length: 320
   hop_length: 160

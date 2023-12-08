@@ -13,17 +13,20 @@ from datetime import datetime
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # fix random seeds for reproducibility
-SEED = 123
-torch.manual_seed(SEED)
+
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-np.random.seed(SEED)
-
 
 @hydra.main(version_base=None, config_path="antispoof/configs/", config_name="unittest")
 def main(config: DictConfig):
+    SEED = config.get('seed', 123)
+    torch.manual_seed(SEED)
+    np.random.seed(SEED)
+
     config2 = yaml.safe_load(OmegaConf.to_yaml(config))
     run_id = datetime.now().strftime(r"%m%d_%H%M%S")
+
+
 
     logger = instantiate(config.logger, main_config=json.dumps(config2), run_id=run_id)
     device = instantiate(config.device)

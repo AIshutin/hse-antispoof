@@ -5,7 +5,7 @@ logger:
   name: train
   save_dir: ${trainer.save_dir}
 spec_processing:
-  _target_: antispoof.utils.LFCC
+  _target_: antispoof.frontend.LFCC
   n_dim: 60
   sr: ${trainer.sr}
   speckwargs:
@@ -91,6 +91,5 @@ trainer:
   visualize: wandb
   wandb_project: antispoof_project
   monitor: min val_loss
-  scheduler_steps: 25
   sr: 16000
   len_epoch: 1985

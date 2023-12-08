@@ -1,11 +1,10 @@
-name: lightcnn-stft
 logger:
   _target_: antispoof.logger.logger.get_logger
   experiment_name: ${name}
   name: train
   save_dir: ${trainer.save_dir}
 spec_processing:
-  _target_: antispoof.utils.STFT_transformer
+  _target_: antispoof.frontend.STFT2
   n_fft: 512
   window_length: 320
   hop_length: 160
@@ -57,22 +56,23 @@ metrics:
 device: 
   _target_: torch.device
   device: "cuda:0"
+kaiman: False
 arch:
-  _target_: antispoof.model.LightCNN
-  ifc_size: 23552
-  dropout_p: 0.75
-  dropout_fc: 0.75
-  sr: ${trainer.sr}
-  banks: False
-  kaiman: True
-loss:
-  _target_: antispoof.loss.CELoss
-  weight:
-  - 9.0
-  - 1.0
+  _target_: antispoof.model.LightCNNTrim
+  backbone:
+    _target_: antispoof.model.LightCNNBackbone
+    dropout: 0.75
+    kaiman: ${kaiman}
+  head:
+    _target_: antispoof.model.LinearHead
+    ifc: 23552
+    dropout: 0.75
+    kaiman: ${kaiman}
+  softmax:
+    _target_: antispoof.model.NormalSoftmax
 lr_scheduler:
   _target_: antispoof.scheduler.getExponentialScheduler
-  gamma: 0.707
+  gamma: 0.9
 optimizer:
   _target_: torch.optim.Adam
   betas:
@@ -82,13 +82,11 @@ optimizer:
   lr: 0.0003
 trainer:
   _target_: antispoof.trainer.Trainer
-  epochs: 30
+  epochs: 15
   save_period: 1
   verbosity: 2
   save_dir: saved/${name}/
   visualize: wandb
   wandb_project: antispoof_project
   monitor: min val_loss
-  scheduler_steps: 25
   sr: 16000
-  len_epoch: 1985
