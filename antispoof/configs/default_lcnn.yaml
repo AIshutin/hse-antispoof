@@ -23,20 +23,6 @@ data:
       sr: ${trainer.sr}
       spec_processing: ${spec_processing}
       spec_segment_length: 750
-  val:
-    _target_: torch.utils.data.DataLoader
-    batch_size: 64
-    num_workers: 10
-    shuffle: False
-    drop_last: False
-    collate_fn: 
-      _target_: antispoof.collate_fn.get_collate_fn
-    dataset:
-      _target_: antispoof.datasets.LADataset
-      part: dev
-      sr: ${trainer.sr}
-      spec_processing: ${spec_processing}
-      spec_segment_length: 750
   test:
     _target_: torch.utils.data.DataLoader
     batch_size: 64
@@ -88,5 +74,5 @@ trainer:
   save_dir: saved/${name}/
   visualize: wandb
   wandb_project: antispoof_project
-  monitor: min val_loss
+  monitor: min test_eer
   sr: 16000
