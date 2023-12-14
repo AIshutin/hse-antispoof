@@ -1,9 +1,15 @@
 defaults:
   - default_lcnn
-name: lightcnn-stft
+name: lightcnn-lfcc
 spec_processing:
-  _target_: antispoof.frontend.STFT2
-kaiman: False
+  _target_: antispoof.frontend.LFCC
+  n_dim: 60
+  sr: ${trainer.sr}
+  speckwargs:
+    n_fft: 512
+    win_length: 320
+    hop_length: 160
+kaiman: True
 arch:
   _target_: antispoof.model.LightCNNTrim
   backbone:
@@ -12,13 +18,10 @@ arch:
     kaiman: ${kaiman}
   head:
     _target_: antispoof.model.LinearHead
-    ifc: 23552
+    ifc: 4416
     dropout: 0.75
     kaiman: ${kaiman}
   softmax:
     _target_: antispoof.model.NormalSoftmax
 loss:
   _target_: antispoof.loss.CELoss
-  weight:
-  - 9.0
-  - 1.0

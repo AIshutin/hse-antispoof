@@ -7,13 +7,19 @@ logger = logging.getLogger(__name__)
 
 
 class CustomDirAudioDataset(BaseDataset):
-    def __init__(self, audio_dir):
+    def __init__(self, path, **kwargs):
         index = []
-        for path in Path(audio_dir).iterdir():
-            if path.suffix in [".mp3", ".wav", ".flac", ".m4a"]:
-                entry = {}
-                entry["path"] = str(path)
-                t_info = torchaudio.info(entry["path"])
-                entry["audio_len"] = t_info.num_frames / t_info.sample_rate
-                index.append(entry)
-        super().__init__(index)
+        for audio in sorted(Path(path).iterdir()):
+            if audio.suffix in [".mp3", ".wav", ".flac", ".m4a"]:
+                try:
+                    t_info = torchaudio.info(audio)
+                    length = t_info.num_frames / t_info.sample_rate
+                except:
+                    length = 10
+                index.append({
+                    "audio": str(audio),
+                    "target": -1,
+                    "cls": 'unknown',
+                    "audio_length": length
+                })
+        super().__init__(index, **kwargs)

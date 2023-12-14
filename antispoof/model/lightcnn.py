@@ -30,7 +30,8 @@ def kaiman_trick(m):
     if not isinstance(m, nn.Linear) and not isinstance(m, nn.Conv2d):
         return
     
-    nn.init.zeros_(m.bias)
+    if hasattr(m, 'bias') and m.bias is not None:
+        nn.init.zeros_(m.bias)
     nn.init.kaiming_normal_(m.weight)
 
 
@@ -38,18 +39,20 @@ class AMSoftmax(nn.Module):
     def __init__(self, m=0.2) -> None:
         super().__init__()
         self.m = m
-        self.w = nn.Linear(2, 2, bias=False).weight
+        self.w = nn.Linear(2, 2, bias=False)
     
     def forward(self, X, fast=False):
-        with torch.no_grad():
-            self.w /= torch.norm(self.w, dim=-1) 
-        
         X_norm = torch.norm(X, dim=-1)
-        X /= X_norm
-        cos_theta = X @ self.w.T
-        theta = torch.acos(cos_theta)
-        exp_wo_margins = torch.exp(X_norm * cos_theta)
-        exp_with_margins = torch.exp(X_norm * torch.cos(theta * self.m))
+        X = X / X_norm.unsqueeze(-1)
+        cos_theta = X @ (self.w.weight / torch.norm(self.w.weight, dim=-1, keepdim=True)).T
+
+        assert((cos_theta < 1.01).all())
+        assert((cos_theta > -1.01).all())
+
+
+        theta = torch.acos(torch.clamp(cos_theta, min=-0.99999, max=0.99999))
+        exp_wo_margins = torch.exp(cos_theta) # X * 
+        exp_with_margins = torch.exp(torch.cos(theta * self.m)) # X * 
         p1 = exp_with_margins[:, 1] / (exp_wo_margins[:, 0] + exp_with_margins[:, 1])
         p0 = exp_with_margins[:, 0] / (exp_wo_margins[:, 1] + exp_with_margins[:, 0])
         score = exp_wo_margins[:, 1] / (exp_wo_margins.sum(dim=-1))

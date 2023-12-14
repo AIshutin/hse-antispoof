@@ -102,7 +102,7 @@ class BaseDataset(Dataset):
     def _assert_index_is_valid(index):
         for entry in index:
             assert "audio_length" in entry, (
-                "Each dataset item should include field 'audio_len'"
+                "Each dataset item should include field 'audio_length'"
                 " - duration of audio (in seconds)."
             )
             assert "audio" in entry, (

@@ -1,0 +1,69 @@
+name: lightcnn-cqt-test
+logger:
+  _target_: antispoof.logger.logger.get_logger
+  experiment_name: ${name}
+  name: train
+  save_dir: ${trainer.save_dir}
+data:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    num_workers: 10
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: antispoof.collate_fn.get_collate_fn
+    dataset:
+      _target_: antispoof.datasets.CustomDirAudioDataset
+      path: default_test_data
+      sr: ${trainer.sr}
+      spec_processing: ${spec_processing}
+      spec_segment_length: 750
+metrics:
+  - _target_: antispoof.metric.Accuracy
+device: 
+  _target_: torch.device
+  device: "cuda:0"
+kaiman: False
+lr_scheduler:
+  _target_: antispoof.scheduler.getExponentialScheduler
+  gamma: 0.95
+optimizer:
+  _target_: torch.optim.Adam
+  betas:
+    - 0.9
+    - 0.999
+  eps: 0.00000001
+  lr: 0.0003
+trainer:
+  _target_: antispoof.trainer.Trainer
+  epochs: 10
+  save_period: 1
+  verbosity: 2
+  save_dir: saved/${name}/
+  visualize: wandb
+  wandb_project: antispoof_project
+  monitor: min test_eer
+  sr: 16000
+thr: 0.25534
+spec_processing:
+  _target_: antispoof.frontend.CQT
+  n_dim: 60
+  sr: ${trainer.sr}
+  hop_length: 160
+checkpoint: default_test_model/checkpoint.pth
+arch:
+  _target_: antispoof.model.LightCNNTrim
+  backbone:
+    _target_: antispoof.model.LightCNNBackbone
+    dropout: 0.75
+    kaiman: ${kaiman}
+  head:
+    _target_: antispoof.model.LinearHead
+    ifc: 4416
+    dropout: 0.75
+    kaiman: ${kaiman}
+  softmax:
+    _target_: antispoof.model.NormalSoftmax
+loss:
+  _target_: antispoof.loss.CELoss

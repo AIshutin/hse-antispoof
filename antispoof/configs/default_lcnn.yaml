@@ -4,7 +4,7 @@ logger:
   name: train
   save_dir: ${trainer.save_dir}
 spec_processing:
-  _target_: antispoof.frontend.STFT2
+  _target_: antispoof.frontend.LFCC
   n_fft: 512
   window_length: 320
   hop_length: 160
@@ -20,6 +20,20 @@ data:
     dataset:
       _target_: antispoof.datasets.LADataset
       part: train
+      sr: ${trainer.sr}
+      spec_processing: ${spec_processing}
+      spec_segment_length: 750
+  val:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 64
+    num_workers: 10
+    shuffle: False
+    drop_last: False
+    collate_fn: 
+      _target_: antispoof.collate_fn.get_collate_fn
+    dataset:
+      _target_: antispoof.datasets.LADataset
+      part: dev
       sr: ${trainer.sr}
       spec_processing: ${spec_processing}
       spec_segment_length: 750
@@ -68,7 +82,7 @@ optimizer:
   lr: 0.0003
 trainer:
   _target_: antispoof.trainer.Trainer
-  epochs: 15
+  epochs: 10
   save_period: 1
   verbosity: 2
   save_dir: saved/${name}/

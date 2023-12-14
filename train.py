@@ -26,8 +26,6 @@ def main(config: DictConfig):
     config2 = yaml.safe_load(OmegaConf.to_yaml(config))
     run_id = datetime.now().strftime(r"%m%d_%H%M%S")
 
-
-
     logger = instantiate(config.logger, main_config=json.dumps(config2), run_id=run_id)
     device = instantiate(config.device)
     model = instantiate(config.arch).to(device)

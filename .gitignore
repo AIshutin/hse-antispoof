@@ -16,6 +16,8 @@ librispeech-*.txt
 *.pth
 LA
 LA.zip
+experiments.sh
+experiments2.sh
 
 # C extensions
 *.so

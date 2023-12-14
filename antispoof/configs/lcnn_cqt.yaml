@@ -1,0 +1,24 @@
+defaults:
+  - default_lcnn
+name: lightcnn-cqt
+spec_processing:
+  _target_: antispoof.frontend.CQT
+  n_dim: 60
+  sr: ${trainer.sr}
+  hop_length: 160
+kaiman: False
+arch:
+  _target_: antispoof.model.LightCNNTrim
+  backbone:
+    _target_: antispoof.model.LightCNNBackbone
+    dropout: 0.75
+    kaiman: ${kaiman}
+  head:
+    _target_: antispoof.model.LinearHead
+    ifc: 4416
+    dropout: 0.75
+    kaiman: ${kaiman}
+  softmax:
+    _target_: antispoof.model.NormalSoftmax
+loss:
+  _target_: antispoof.loss.CELoss
